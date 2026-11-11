@@ -1,0 +1,21 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+
+# Dependencies (in case you add a build step later)
+node_modules/
+
+# Vercel
+.vercel/
+
+# Environment variables / secrets — never commit these
+.env
+.env.local
+.env*.local
+
+# Logs
+*.log
