@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Coffee Bar Advisor</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <style>
 :root{
   --bg:#faf6f1; --surface:#ffffff; --text:#2b1d14; --muted:#7a6a5c;
@@ -157,24 +158,44 @@ footer{text-align:center; color:var(--muted); font-size:.8rem; padding:20px; bor
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
 <script>
-const EQUIPMENT = [
-  {id:'be', name:'Barista Express', brand:'Breville', cat:'Machine', price:700, level:'beginner', space:'medium', notes:['Built-in grinder','PID-less but easy']},
-  {id:'gc', name:'Classic Pro', brand:'Gaggia', cat:'Machine', price:450, level:'intermediate', space:'compact', notes:['Commercial steam wand','Needs separate grinder']},
-  {id:'rs', name:'Silvia', brand:'Rancilio', cat:'Machine', price:700, level:'advanced', space:'compact', notes:['Prosumer build','Steep learning curve']},
-  {id:'dd', name:'Dedica', brand:"De'Longhi", cat:'Machine', price:250, level:'beginner', space:'compact', notes:['Very slim','Good for tight counters']},
-  {id:'lm', name:'Linea Mini', brand:'La Marzocco', cat:'Machine', price:4500, level:'advanced', space:'large', notes:['PID control','Cafe-grade']},
-  {id:'f58', name:'58', brand:'Flair', cat:'Machine', price:800, level:'advanced', space:'compact', notes:['Manual lever','No electricity needed']},
-  {id:'bp', name:'Bambino Plus', brand:'Breville', cat:'Machine', price:400, level:'beginner', space:'compact', notes:['Fast heat-up','Auto milk texturing']},
-  {id:'be2', name:'Encore', brand:'Baratza', cat:'Grinder', price:170, level:'beginner', space:'compact', notes:['Entry burr grinder']},
-  {id:'em', name:'Mignon', brand:'Eureka', cat:'Grinder', price:250, level:'intermediate', space:'compact', notes:['Consistent grind']},
-  {id:'nz', name:'Zero', brand:'Niche', cat:'Grinder', price:700, level:'advanced', space:'medium', notes:['Single dose, low retention']},
-  {id:'df', name:'DF64', brand:'DF64', cat:'Grinder', price:300, level:'intermediate', space:'compact', notes:['Popular budget single-dose']},
-  {id:'scale', name:'Pearl Scale', brand:'Acaia', cat:'Accessory', price:150, level:'beginner', space:'compact', notes:['Brew-by-weight']},
-  {id:'tamp', name:'Tamper', brand:'Normcore', cat:'Accessory', price:40, level:'beginner', space:'compact', notes:['Precision fit']},
-  {id:'kettle', name:'Stagg EKG Kettle', brand:'Fellow', cat:'Accessory', price:165, level:'beginner', space:'compact', notes:['Temp control', 'Mainly for pour-over']},
-  {id:'kb', name:'Knock Box', brand:'Generic', cat:'Accessory', price:25, level:'beginner', space:'compact', notes:['Puck disposal']},
-];
+// Paste your own published-to-web CSV link here (File > Share > Publish to web > CSV in Google Sheets).
+// This URL is meant to be public, so it's fine to leave it in client-side code.
+const SHEET_CSV_URL = 'PASTE_YOUR_PUBLISHED_SHEET_CSV_URL_HERE';
+
+let EQUIPMENT = [];
+let equipmentLoaded = false;
 let selectedIds = new Set();
+
+function loadCatalogFailure(msg){
+  document.getElementById('eqRows').innerHTML =
+    `<tr><td colspan="7" class="sub">${msg}</td></tr>`;
+}
+
+if(SHEET_CSV_URL.includes('PASTE_YOUR')){
+  loadCatalogFailure('Catalog source not configured yet — set SHEET_CSV_URL in the script to your published Google Sheet CSV link.');
+} else {
+  fetch(SHEET_CSV_URL)
+    .then(r => { if(!r.ok) throw new Error('HTTP '+r.status); return r.text(); })
+    .then(csvText => {
+      const parsed = Papa.parse(csvText, {header:true, skipEmptyLines:true});
+      EQUIPMENT = parsed.data.map(row => ({
+        id: row.id.trim(),
+        name: row.name.trim(),
+        brand: row.brand.trim(),
+        cat: row.cat.trim(),
+        price: Number(row.price),
+        level: row.level.trim(),
+        space: row.space.trim(),
+        notes: row.notes ? row.notes.split(';').map(n=>n.trim()).filter(Boolean) : []
+      }));
+      equipmentLoaded = true;
+      applyFilters();
+    })
+    .catch(err => {
+      console.error('Failed to load equipment from Google Sheet', err);
+      loadCatalogFailure('Could not load the equipment catalog from Google Sheets. Check that the sheet is published to web as CSV and the link is correct.');
+    });
+}
 
 // Tabs
 let threeInited = false;
@@ -184,7 +205,7 @@ document.querySelectorAll('nav button').forEach(b=>{
     document.querySelectorAll('section').forEach(x=>x.classList.remove('active'));
     b.classList.add('active');
     document.getElementById(b.dataset.tab).classList.add('active');
-    if(b.dataset.tab==='preview3d' && !threeInited){ threeInited = true; initThree(); }
+    if(b.dataset.tab==='preview3d' && !threeInited && equipmentLoaded){ threeInited = true; initThree(); }
   });
 });
 
@@ -206,6 +227,10 @@ document.getElementById('budgetInput').addEventListener('input', (e)=>{
 
 document.getElementById('getRec').addEventListener('click',()=>{
   const out = document.getElementById('recResult');
+  if(!equipmentLoaded){
+    out.innerHTML = '<div class="result">Still loading the equipment catalog — try again in a moment.</div>';
+    return;
+  }
   if(answers.budget===undefined || isNaN(answers.budget) || !answers.level || !answers.space){
     out.innerHTML = '<div class="result">Please enter a budget and answer the other two questions above.</div>';
     return;
