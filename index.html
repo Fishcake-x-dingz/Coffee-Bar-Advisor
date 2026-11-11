@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Coffee Bar Advisor</title>
+<style>
+:root{
+  --bg:#faf6f1; --surface:#ffffff; --text:#2b1d14; --muted:#7a6a5c;
+  --accent:#8a5a3b; --accent2:#c08552; --border:#e6dccd; --chip:#f1e4d6;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#1b1511; --surface:#241c17; --text:#f0e6da; --muted:#b3a393;
+    --accent:#d9a066; --accent2:#c08552; --border:#3a2e24; --chip:#332822;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#1b1511; --surface:#241c17; --text:#f0e6da; --muted:#b3a393;
+  --accent:#d9a066; --accent2:#c08552; --border:#3a2e24; --chip:#332822;
+}
+*{box-sizing:border-box;}
+html{scroll-padding-top:env(safe-area-inset-top,0px);}
+body{
+  margin:0; background:var(--bg); color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+header{
+  padding:28px 20px 18px; text-align:center; border-bottom:1px solid var(--border);
+}
+header h1{margin:0 0 6px; font-size:1.6rem;}
+header p{margin:0; color:var(--muted); font-size:.95rem;}
+nav{display:flex; gap:8px; justify-content:center; margin-top:16px; flex-wrap:wrap;}
+nav button{
+  background:var(--surface); border:1px solid var(--border); color:var(--text);
+  padding:8px 16px; border-radius:20px; cursor:pointer; font-size:.9rem;
+}
+nav button.active{background:var(--accent); color:#fff; border-color:var(--accent);}
+main{max-width:860px; margin:0 auto; padding:24px 16px 60px;}
+section{display:none;}
+section.active{display:block;}
+h2{font-size:1.2rem; margin-bottom:4px;}
+.sub{color:var(--muted); font-size:.9rem; margin-bottom:18px;}
+.table-wrap{overflow-x:auto; border:1px solid var(--border); border-radius:10px;}
+table{width:100%; border-collapse:collapse; min-width:560px; background:var(--surface);}
+th,td{padding:10px 12px; border-bottom:1px solid var(--border); text-align:left; font-size:.88rem;}
+th{color:var(--muted); font-weight:600;}
+tr:last-child td{border-bottom:none;}
+.pick{display:flex; align-items:center; gap:6px;}
+.cards{display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:12px; margin-bottom:20px;}
+.card{background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:14px;}
+.card h3{margin:0 0 4px; font-size:1rem;}
+.card .price{color:var(--accent); font-weight:600;}
+.chip{display:inline-block; background:var(--chip); border-radius:12px; padding:2px 9px; font-size:.75rem; margin:4px 4px 0 0; color:var(--muted);}
+.q{margin-bottom:22px;}
+.q p{font-weight:600; margin:0 0 8px;}
+.opts{display:flex; gap:8px; flex-wrap:wrap;}
+.opts button{
+  background:var(--surface); border:1px solid var(--border); color:var(--text);
+  padding:8px 14px; border-radius:8px; cursor:pointer; font-size:.88rem;
+}
+.opts button.sel{background:var(--accent); border-color:var(--accent); color:#fff;}
+.result{background:var(--surface); border:1px solid var(--accent); border-radius:10px; padding:18px; margin-top:10px;}
+.result h3{margin-top:0; color:var(--accent);}
+.cta{background:var(--accent); color:#fff; border:none; padding:10px 20px; border-radius:8px; cursor:pointer; font-size:.9rem;}
+footer{text-align:center; color:var(--muted); font-size:.8rem; padding:20px; border-top:1px solid var(--border);}
+</style>
+</head>
+<body>
+<header>
+  <h1>☕ Coffee Bar Advisor</h1>
+  <p>Compare espresso gear and get a setup recommendation. 3D bar preview coming in a later phase.</p>
+  <nav>
+    <button data-tab="quiz" class="active">Recommend Me</button>
+    <button data-tab="compare">Compare Equipment</button>
+    <button data-tab="saved">Saved Setups</button>
+    <button data-tab="preview3d">3D Preview</button>
+  </nav>
+</header>
+<main>
+
+  <section id="quiz" class="active">
+    <h2>Find your setup</h2>
+    <div class="sub">Answer a few questions for a machine + grinder pairing.</div>
+
+    <div class="q">
+      <p>1. Budget for the whole setup</p>
+      <input type="number" id="budgetInput" placeholder="e.g. 600" min="0" style="width:160px; padding:8px 12px; border-radius:8px; border:1px solid var(--border); background:var(--surface); color:var(--text); font-size:.9rem;">
+      <span style="color:var(--muted); font-size:.85rem; margin-left:6px;">USD</span>
+    </div>
+    <div class="q">
+      <p>2. Experience level</p>
+      <div class="opts" data-q="level">
+        <button data-v="beginner">Beginner</button>
+        <button data-v="intermediate">Intermediate</button>
+        <button data-v="advanced">Advanced</button>
+      </div>
+    </div>
+    <div class="q">
+      <p>3. Counter space</p>
+      <div class="opts" data-q="space">
+        <button data-v="compact">Compact</button>
+        <button data-v="medium">Medium</button>
+        <button data-v="large">Plenty of room</button>
+      </div>
+    </div>
+
+    <button class="cta" id="getRec">Get my recommendation</button>
+    <div id="recResult"></div>
+  </section>
+
+  <section id="compare">
+    <h2>Compare equipment</h2>
+    <div class="sub">Filter the catalog, then check up to 3 items to compare side by side.</div>
+    <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px;">
+      <input id="searchInput" type="text" placeholder="Search name or brand…" style="flex:1; min-width:160px; padding:8px 12px; border-radius:8px; border:1px solid var(--border); background:var(--surface); color:var(--text); font-size:.88rem;">
+      <select id="catFilter" style="padding:8px 12px; border-radius:8px; border:1px solid var(--border); background:var(--surface); color:var(--text); font-size:.88rem;">
+        <option value="">All categories</option>
+        <option value="Machine">Machines</option>
+        <option value="Grinder">Grinders</option>
+        <option value="Accessory">Accessories</option>
+      </select>
+      <input id="maxPriceInput" type="number" placeholder="Max price" style="width:120px; padding:8px 12px; border-radius:8px; border:1px solid var(--border); background:var(--surface); color:var(--text); font-size:.88rem;">
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th></th><th>Item</th><th>Brand</th><th>Category</th><th>Price</th><th>Level</th><th>Footprint</th></tr></thead>
+        <tbody id="eqRows"></tbody>
+      </table>
+    </div>
+    <div id="compareOut" style="margin-top:18px;"></div>
+  </section>
+
+  <section id="saved">
+    <h2>Saved setups</h2>
+    <div class="sub">Setups you've saved from the recommendation quiz (stored in this browser).</div>
+    <div id="savedOut"></div>
+  </section>
+
+  <section id="preview3d">
+    <h2>3D bar preview</h2>
+    <div class="sub">Pick a machine and grinder to drop onto the counter. Drag to rotate, scroll to zoom.</div>
+    <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px;">
+      <select id="machineSelect" style="padding:8px 12px; border-radius:8px; border:1px solid var(--border); background:var(--surface); color:var(--text); font-size:.88rem;"></select>
+      <select id="grinderSelect" style="padding:8px 12px; border-radius:8px; border:1px solid var(--border); background:var(--surface); color:var(--text); font-size:.88rem;"></select>
+    </div>
+    <div style="border:1px solid var(--border); border-radius:10px; overflow:hidden; background:var(--surface);">
+      <canvas id="threeCanvas" style="width:100%; height:360px; display:block; cursor:grab;"></canvas>
+    </div>
+    <div class="sub" style="margin-top:8px;">Placeholder geometry for now — swapping in real 3D models per machine is a later refinement.</div>
+  </section>
+
+</main>
+<footer>Phase 3 · 3D bar preview added · richer models and layouts to come</footer>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+<script>
+const EQUIPMENT = [
+  {id:'be', name:'Barista Express', brand:'Breville', cat:'Machine', price:700, level:'beginner', space:'medium', notes:['Built-in grinder','PID-less but easy']},
+  {id:'gc', name:'Classic Pro', brand:'Gaggia', cat:'Machine', price:450, level:'intermediate', space:'compact', notes:['Commercial steam wand','Needs separate grinder']},
+  {id:'rs', name:'Silvia', brand:'Rancilio', cat:'Machine', price:700, level:'advanced', space:'compact', notes:['Prosumer build','Steep learning curve']},
+  {id:'dd', name:'Dedica', brand:"De'Longhi", cat:'Machine', price:250, level:'beginner', space:'compact', notes:['Very slim','Good for tight counters']},
+  {id:'lm', name:'Linea Mini', brand:'La Marzocco', cat:'Machine', price:4500, level:'advanced', space:'large', notes:['PID control','Cafe-grade']},
+  {id:'f58', name:'58', brand:'Flair', cat:'Machine', price:800, level:'advanced', space:'compact', notes:['Manual lever','No electricity needed']},
+  {id:'bp', name:'Bambino Plus', brand:'Breville', cat:'Machine', price:400, level:'beginner', space:'compact', notes:['Fast heat-up','Auto milk texturing']},
+  {id:'be2', name:'Encore', brand:'Baratza', cat:'Grinder', price:170, level:'beginner', space:'compact', notes:['Entry burr grinder']},
+  {id:'em', name:'Mignon', brand:'Eureka', cat:'Grinder', price:250, level:'intermediate', space:'compact', notes:['Consistent grind']},
+  {id:'nz', name:'Zero', brand:'Niche', cat:'Grinder', price:700, level:'advanced', space:'medium', notes:['Single dose, low retention']},
+  {id:'df', name:'DF64', brand:'DF64', cat:'Grinder', price:300, level:'intermediate', space:'compact', notes:['Popular budget single-dose']},
+  {id:'scale', name:'Pearl Scale', brand:'Acaia', cat:'Accessory', price:150, level:'beginner', space:'compact', notes:['Brew-by-weight']},
+  {id:'tamp', name:'Tamper', brand:'Normcore', cat:'Accessory', price:40, level:'beginner', space:'compact', notes:['Precision fit']},
+  {id:'kettle', name:'Stagg EKG Kettle', brand:'Fellow', cat:'Accessory', price:165, level:'beginner', space:'compact', notes:['Temp control', 'Mainly for pour-over']},
+  {id:'kb', name:'Knock Box', brand:'Generic', cat:'Accessory', price:25, level:'beginner', space:'compact', notes:['Puck disposal']},
+];
+let selectedIds = new Set();
+
+// Tabs
+let threeInited = false;
+document.querySelectorAll('nav button').forEach(b=>{
+  b.addEventListener('click',()=>{
+    document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('section').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    document.getElementById(b.dataset.tab).classList.add('active');
+    if(b.dataset.tab==='preview3d' && !threeInited){ threeInited = true; initThree(); }
+  });
+});
+
+// Quiz
+const answers = {};
+document.querySelectorAll('.opts').forEach(group=>{
+  group.querySelectorAll('button').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      group.querySelectorAll('button').forEach(x=>x.classList.remove('sel'));
+      btn.classList.add('sel');
+      answers[group.dataset.q] = btn.dataset.v;
+    });
+  });
+});
+
+document.getElementById('budgetInput').addEventListener('input', (e)=>{
+  answers.budget = e.target.value === '' ? undefined : Number(e.target.value);
+});
+
+document.getElementById('getRec').addEventListener('click',()=>{
+  const out = document.getElementById('recResult');
+  if(answers.budget===undefined || isNaN(answers.budget) || !answers.level || !answers.space){
+    out.innerHTML = '<div class="result">Please enter a budget and answer the other two questions above.</div>';
+    return;
+  }
+  const cap = answers.budget;
+  const levelOrder = {beginner:0, intermediate:1, advanced:2};
+  const score = (item) => {
+    let s = 0;
+    if(item.price <= cap) s += 3; else s -= 2;
+    s -= Math.abs(levelOrder[item.level]-levelOrder[answers.level]);
+    if(item.space === answers.space) s += 1;
+    return s;
+  };
+  const machine = EQUIPMENT.filter(e=>e.cat==='Machine').sort((a,b)=>score(b)-score(a))[0];
+  const grinder = EQUIPMENT.filter(e=>e.cat==='Grinder')
+    .sort((a,b)=>score(b)-score(a))[0];
+  out.innerHTML = `
+    <div class="result">
+      <h3>Suggested setup</h3>
+      <div class="cards">
+        <div class="card"><h3>${machine.brand} ${machine.name}</h3><div class="price">$${machine.price}</div>${machine.notes.map(n=>`<span class="chip">${n}</span>`).join('')}</div>
+        <div class="card"><h3>${grinder.brand} ${grinder.name}</h3><div class="price">$${grinder.price}</div>${grinder.notes.map(n=>`<span class="chip">${n}</span>`).join('')}</div>
+      </div>
+      <div class="sub">Estimated total: $${machine.price + grinder.price}. Once the 3D visualizer ships, you'll be able to drop this pairing straight into a rendered bar.</div>
+      <button class="cta" id="saveSetup">Save this setup</button>
+    </div>`;
+  document.getElementById('saveSetup').addEventListener('click',()=>{
+    const list = JSON.parse(localStorage.getItem('savedSetups')||'[]');
+    list.push({machine:`${machine.brand} ${machine.name}`, grinder:`${grinder.brand} ${grinder.name}`,
+      total: machine.price+grinder.price, budget: answers.budget, level: answers.level, space: answers.space,
+      date: new Date().toLocaleDateString()});
+    localStorage.setItem('savedSetups', JSON.stringify(list));
+    renderSaved();
+    document.getElementById('saveSetup').textContent = 'Saved ✓';
+  });
+});
+
+// Comparison table with filters
+const tbody = document.getElementById('eqRows');
+const searchInput = document.getElementById('searchInput');
+const catFilter = document.getElementById('catFilter');
+const maxPriceInput = document.getElementById('maxPriceInput');
+
+function applyFilters(){
+  const q = searchInput.value.trim().toLowerCase();
+  const cat = catFilter.value;
+  const maxP = maxPriceInput.value ? Number(maxPriceInput.value) : Infinity;
+  const filtered = EQUIPMENT.filter(i=>
+    (!q || i.name.toLowerCase().includes(q) || i.brand.toLowerCase().includes(q)) &&
+    (!cat || i.cat===cat) &&
+    (i.price <= maxP)
+  );
+  renderTable(filtered);
+}
+
+function selectedCategory(){
+  if(!selectedIds.size) return null;
+  const first = EQUIPMENT.find(e=>e.id===[...selectedIds][0]);
+  return first ? first.cat : null;
+}
+
+function renderTable(list){
+  tbody.innerHTML = '';
+  const lockedCat = selectedCategory();
+  list.forEach(item=>{
+    const tr = document.createElement('tr');
+    const checked = selectedIds.has(item.id) ? 'checked' : '';
+    const disabled = (lockedCat && item.cat !== lockedCat) ? 'disabled' : '';
+    if(disabled) tr.style.opacity = '0.45';
+    tr.innerHTML = `<td><input type="checkbox" value="${item.id}" class="cmpBox" ${checked} ${disabled}></td>
+      <td>${item.name}</td><td>${item.brand}</td><td>${item.cat}</td><td>$${item.price}</td><td>${item.level}</td><td>${item.space}</td>`;
+    tbody.appendChild(tr);
+  });
+  tbody.querySelectorAll('.cmpBox').forEach(cb=>{
+    cb.addEventListener('change',()=>{
+      const item = EQUIPMENT.find(e=>e.id===cb.value);
+      const lc = selectedCategory();
+      if(cb.checked && lc && item.cat !== lc){ cb.checked=false; return; }
+      if(cb.checked && selectedIds.size>=3){ cb.checked=false; return; }
+      cb.checked ? selectedIds.add(cb.value) : selectedIds.delete(cb.value);
+      renderCompare([...selectedIds].map(id=>EQUIPMENT.find(e=>e.id===id)));
+      applyFilters();
+    });
+  });
+}
+
+function renderCompare(items){
+  const out = document.getElementById('compareOut');
+  if(items.length<2){ out.innerHTML=''; return; }
+  out.innerHTML = `<div class="cards">${items.map(i=>`
+    <div class="card"><h3>${i.brand} ${i.name}</h3><div class="price">$${i.price}</div>
+    <span class="chip">${i.cat}</span><span class="chip">${i.level}</span><span class="chip">${i.space}</span>
+    ${i.notes.map(n=>`<span class="chip">${n}</span>`).join('')}</div>`).join('')}</div>`;
+}
+
+[searchInput, catFilter, maxPriceInput].forEach(el=>el.addEventListener('input', applyFilters));
+applyFilters();
+
+// Saved setups
+function renderSaved(){
+  const out = document.getElementById('savedOut');
+  const list = JSON.parse(localStorage.getItem('savedSetups')||'[]');
+  if(!list.length){ out.innerHTML = '<div class="sub">No saved setups yet — save one from the Recommend Me tab.</div>'; return; }
+  out.innerHTML = `<div class="cards">${list.map((s,idx)=>`
+    <div class="card">
+      <h3>${s.machine}</h3>
+      <div class="sub" style="margin:2px 0 6px;">+ ${s.grinder}</div>
+      <div class="price">$${s.total}</div>
+      <span class="chip">${s.level}</span><span class="chip">${s.space}</span><span class="chip">saved ${s.date}</span>
+      <div style="margin-top:8px;"><button class="opts" style="background:none;border:1px solid var(--border);border-radius:8px;padding:6px 10px;cursor:pointer;color:var(--text);font-size:.8rem;" onclick="deleteSaved(${idx})">Remove</button></div>
+    </div>`).join('')}</div>`;
+}
+function deleteSaved(idx){
+  const list = JSON.parse(localStorage.getItem('savedSetups')||'[]');
+  list.splice(idx,1);
+  localStorage.setItem('savedSetups', JSON.stringify(list));
+  renderSaved();
+}
+renderSaved();
+
+// 3D Preview
+let scene3, camera3, renderer3, group3;
+function footprintSize(space){
+  return space==='compact' ? [0.9,1.1,0.6] : space==='medium' ? [1.2,1.3,0.7] : [1.6,1.5,0.9];
+}
+function populate3dSelects(){
+  const mSel = document.getElementById('machineSelect');
+  const gSel = document.getElementById('grinderSelect');
+  EQUIPMENT.filter(e=>e.cat==='Machine').forEach(m=>{
+    const o = document.createElement('option'); o.value=m.id; o.textContent=`${m.brand} ${m.name}`; mSel.appendChild(o);
+  });
+  EQUIPMENT.filter(e=>e.cat==='Grinder').forEach(g=>{
+    const o = document.createElement('option'); o.value=g.id; o.textContent=`${g.brand} ${g.name}`; gSel.appendChild(o);
+  });
+  mSel.addEventListener('change', build3dScene);
+  gSel.addEventListener('change', build3dScene);
+}
+function initThree(){
+  populate3dSelects();
+  const canvas = document.getElementById('threeCanvas');
+  scene3 = new THREE.Scene();
+  scene3.background = new THREE.Color(0xeee6da);
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  camera3 = new THREE.PerspectiveCamera(45, w/h, 0.1, 100);
+  camera3.position.set(0,3,8);
+  camera3.lookAt(0,1,0);
+  renderer3 = new THREE.WebGLRenderer({canvas, antialias:true, alpha:true});
+  renderer3.setSize(w,h,false);
+  scene3.add(new THREE.AmbientLight(0xffffff,0.75));
+  const dir = new THREE.DirectionalLight(0xffffff,0.6); dir.position.set(5,10,5); scene3.add(dir);
+  group3 = new THREE.Group(); scene3.add(group3);
+  build3dScene();
+  (function animate(){ requestAnimationFrame(animate); renderer3.render(scene3, camera3); })();
+  let dragging=false, lastX=0;
+  canvas.addEventListener('pointerdown', e=>{ dragging=true; lastX=e.clientX; canvas.style.cursor='grabbing'; });
+  window.addEventListener('pointerup', ()=>{ dragging=false; canvas.style.cursor='grab'; });
+  window.addEventListener('pointermove', e=>{
+    if(!dragging) return;
+    group3.rotation.y += (e.clientX-lastX)*0.01;
+    lastX = e.clientX;
+  });
+  canvas.addEventListener('wheel', e=>{
+    e.preventDefault();
+    camera3.position.z = Math.min(14, Math.max(4, camera3.position.z + e.deltaY*0.01));
+  }, {passive:false});
+  window.addEventListener('resize', ()=>{
+    const nw = canvas.clientWidth, nh = canvas.clientHeight;
+    camera3.aspect = nw/nh; camera3.updateProjectionMatrix();
+    renderer3.setSize(nw,nh,false);
+  });
+}
+function build3dScene(){
+  while(group3.children.length) group3.remove(group3.children[0]);
+  const counter = new THREE.Mesh(new THREE.BoxGeometry(6,0.3,1.4), new THREE.MeshStandardMaterial({color:0x8a5a3b}));
+  group3.add(counter);
+  const machine = EQUIPMENT.find(e=>e.id===document.getElementById('machineSelect').value);
+  const grinder = EQUIPMENT.find(e=>e.id===document.getElementById('grinderSelect').value);
+  if(machine){
+    const [w,h,d] = footprintSize(machine.space);
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), new THREE.MeshStandardMaterial({color:0x2b1d14, metalness:0.3, roughness:0.4}));
+    mesh.position.set(-1, 0.15+h/2, 0);
+    group3.add(mesh);
+    const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,0.3,12), new THREE.MeshStandardMaterial({color:0xc08552}));
+    handle.rotation.z = Math.PI/2;
+    handle.position.set(-1, 0.15+h*0.3, d/2+0.15);
+    group3.add(handle);
+  }
+  if(grinder){
+    const [w,h] = footprintSize(grinder.space).map(v=>v*0.8);
+    const mesh = new THREE.Mesh(new THREE.CylinderGeometry(w*0.4,w*0.5,h*1.3,16), new THREE.MeshStandardMaterial({color:0x4a3626}));
+    mesh.position.set(1, 0.15+h*0.65, 0);
+    group3.add(mesh);
+  }
+}
+</script>
+</body>
+</html>
